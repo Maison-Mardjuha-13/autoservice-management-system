@@ -1,0 +1,863 @@
+openapi: 3.0.3
+
+info:
+  title: AutoService Management API
+  description: REST API системы управления техническим обслуживанием автомобилей
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+tags:
+  - name: Customers
+    description: Работа с клиентами
+  - name: Vehicles
+    description: Работа с автомобилями
+  - name: Requests
+    description: Работа с заявками на обслуживание
+  - name: Orders
+    description: Работа с заказами-нарядами
+  - name: Diagnostics
+    description: Диагностика автомобилей
+  - name: Works
+    description: Работы по техническому обслуживанию
+  - name: Parts
+    description: Запчасти
+
+paths:
+
+  /customers:
+    get:
+      tags:
+        - Customers
+      summary: Получить список клиентов
+      operationId: getCustomers
+      responses:
+        '200':
+          description: Список клиентов получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Customers
+      summary: Создать клиента
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Клиент успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /customers/{customerId}:
+    get:
+      tags:
+        - Customers
+      summary: Получить клиента
+      operationId: getCustomerById
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '200':
+          description: Клиент найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /vehicles:
+    post:
+      tags:
+        - Vehicles
+      summary: Добавить автомобиль
+      operationId: createVehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVehicleRequest'
+      responses:
+        '201':
+          description: Автомобиль успешно добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Клиент не найден
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /vehicles/{vehicleId}:
+    get:
+      tags:
+        - Vehicles
+      summary: Получить автомобиль
+      operationId: getVehicleById
+      parameters:
+        - $ref: '#/components/parameters/VehicleId'
+      responses:
+        '200':
+          description: Автомобиль найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /requests:
+    get:
+      tags:
+        - Requests
+      summary: Получить список заявок
+      operationId: getRequests
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Фильтр по статусу заявки
+          schema:
+            type: string
+            enum:
+              - NEW
+              - CONFIRMED
+              - CANCELLED
+        - name: date
+          in: query
+          required: false
+          description: Фильтр по дате обслуживания
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Список заявок получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Requests
+      summary: Создать заявку
+      operationId: createRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRequestRequest'
+      responses:
+        '201':
+          description: Заявка успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Автомобиль не найден
+        '409':
+          description: Выбранное время уже занято
+
+  /requests/{requestId}:
+    get:
+      tags:
+        - Requests
+      summary: Получить заявку
+      operationId: getRequestById
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Заявка найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Получить список заказов
+      operationId: getOrders
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Фильтр по статусу заказа
+          schema:
+            type: string
+            enum:
+              - WAITING_FOR_SERVICE
+              - DIAGNOSTICS
+              - IN_PROGRESS
+              - WAITING_FOR_APPROVAL
+              - READY_FOR_PICKUP
+              - COMPLETED
+              - CANCELLED
+        - name: vehicleId
+          in: query
+          required: false
+          description: Фильтр по автомобилю
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список заказов получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceOrder'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Orders
+      summary: Создать заказ-наряд
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Заказ-наряд успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceOrder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Заявка не найдена
+        '409':
+          description: Для данной заявки уже существует заказ
+
+  /orders/{orderId}:
+    get:
+      tags:
+        - Orders
+      summary: Получить заказ-наряд
+      operationId: getOrderById
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Заказ найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceOrder'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /orders/{orderId}/status:
+    patch:
+      tags:
+        - Orders
+      summary: Изменить статус заказа
+      operationId: updateOrderStatus
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrderStatusRequest'
+      responses:
+        '200':
+          description: Статус заказа успешно изменён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceOrder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Недопустимый переход между статусами
+
+  /orders/{orderId}/diagnostics:
+    get:
+      tags:
+        - Diagnostics
+      summary: Получить результаты диагностики
+      operationId: getDiagnostics
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Результаты диагностики получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagnostic'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags:
+        - Diagnostics
+      summary: Сохранить результаты диагностики
+      operationId: createDiagnostic
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiagnosticRequest'
+      responses:
+        '201':
+          description: Результаты диагностики сохранены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagnostic'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Диагностика для данного заказа уже завершена
+
+  /works:
+    get:
+      tags:
+        - Works
+      summary: Получить список работ
+      operationId: getWorks
+      responses:
+        '200':
+          description: Список работ получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Work'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /orders/{orderId}/works:
+    post:
+      tags:
+        - Works
+      summary: Добавить работу в заказ
+      operationId: addWorkToOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddWorkRequest'
+      responses:
+        '201':
+          description: Работа добавлена в заказ
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parts:
+    get:
+      tags:
+        - Parts
+      summary: Получить список запчастей
+      operationId: getParts
+      responses:
+        '200':
+          description: Список запчастей получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Part'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /parts/{partId}:
+    get:
+      tags:
+        - Parts
+      summary: Получить запчасть
+      operationId: getPartById
+      parameters:
+        - $ref: '#/components/parameters/PartId'
+      responses:
+        '200':
+          description: Запчасть найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Part'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parts/availability:
+    get:
+      tags:
+        - Parts
+      summary: Проверить наличие запчасти
+      operationId: checkPartAvailability
+      parameters:
+        - name: partId
+          in: query
+          required: true
+          description: Идентификатор запчасти
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Информация о наличии запчасти
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartAvailability'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+
+components:
+
+  parameters:
+
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      description: Идентификатор клиента
+      schema:
+        type: string
+      example: CUS-001
+
+    VehicleId:
+      name: vehicleId
+      in: path
+      required: true
+      description: Идентификатор автомобиля
+      schema:
+        type: string
+      example: VEH-001
+
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      description: Идентификатор заявки
+      schema:
+        type: string
+      example: REQ-001
+
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: Идентификатор заказа
+      schema:
+        type: string
+      example: ORD-001
+
+    PartId:
+      name: partId
+      in: path
+      required: true
+      description: Идентификатор запчасти
+      schema:
+        type: string
+      example: PRT-001
+
+
+  responses:
+
+    BadRequest:
+      description: Некорректный запрос
+
+    NotFound:
+      description: Запрашиваемый ресурс не найден
+
+    Conflict:
+      description: Конфликт данных
+
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+
+
+  schemas:
+
+    Customer:
+      type: object
+      required:
+        - customerId
+        - fullName
+        - phone
+      properties:
+        customerId:
+          type: string
+          example: CUS-001
+        fullName:
+          type: string
+          example: Иванов Иван Иванович
+        phone:
+          type: string
+          example: "+79990000000"
+        email:
+          type: string
+          format: email
+          example: ivanov@example.com
+
+    CreateCustomerRequest:
+      type: object
+      required:
+        - fullName
+        - phone
+      properties:
+        fullName:
+          type: string
+          example: Иванов Иван Иванович
+        phone:
+          type: string
+          example: "+79990000000"
+        email:
+          type: string
+          format: email
+          example: ivanov@example.com
+
+
+    Vehicle:
+      type: object
+      required:
+        - vehicleId
+        - customerId
+        - vin
+        - brand
+        - model
+      properties:
+        vehicleId:
+          type: string
+          example: VEH-001
+        customerId:
+          type: string
+          example: CUS-001
+        vin:
+          type: string
+          example: XTA00000000000001
+        plateNumber:
+          type: string
+          example: A123BC
+        brand:
+          type: string
+          example: Toyota
+        model:
+          type: string
+          example: Camry
+        year:
+          type: integer
+          example: 2022
+        mileage:
+          type: integer
+          example: 45000
+
+    CreateVehicleRequest:
+      type: object
+      required:
+        - customerId
+        - vin
+        - brand
+        - model
+      properties:
+        customerId:
+          type: string
+          example: CUS-001
+        vin:
+          type: string
+          example: XTA00000000000001
+        plateNumber:
+          type: string
+          example: A123BC
+        brand:
+          type: string
+          example: Toyota
+        model:
+          type: string
+          example: Camry
+        year:
+          type: integer
+          example: 2022
+        mileage:
+          type: integer
+          example: 45000
+
+
+    ServiceRequest:
+      type: object
+      required:
+        - requestId
+        - vehicleId
+        - serviceDate
+        - serviceTime
+        - status
+      properties:
+        requestId:
+          type: string
+          example: REQ-001
+        vehicleId:
+          type: string
+          example: VEH-001
+        serviceDate:
+          type: string
+          format: date
+          example: 2026-08-25
+        serviceTime:
+          type: string
+          example: "10:00"
+        status:
+          type: string
+          enum:
+            - NEW
+            - CONFIRMED
+            - CANCELLED
+          example: NEW
+        comment:
+          type: string
+          example: Плановое ТО
+
+    CreateRequestRequest:
+      type: object
+      required:
+        - vehicleId
+        - serviceDate
+        - serviceTime
+      properties:
+        vehicleId:
+          type: string
+          example: VEH-001
+        serviceDate:
+          type: string
+          format: date
+          example: 2026-08-25
+        serviceTime:
+          type: string
+          example: "10:00"
+        comment:
+          type: string
+          example: Плановое ТО
+
+
+    ServiceOrder:
+      type: object
+      required:
+        - orderId
+        - requestId
+        - status
+        - totalCost
+        - createdAt
+      properties:
+        orderId:
+          type: string
+          example: ORD-001
+        requestId:
+          type: string
+          example: REQ-001
+        status:
+          type: string
+          enum:
+            - WAITING_FOR_SERVICE
+            - DIAGNOSTICS
+            - IN_PROGRESS
+            - WAITING_FOR_APPROVAL
+            - READY_FOR_PICKUP
+            - COMPLETED
+            - CANCELLED
+          example: WAITING_FOR_SERVICE
+        totalCost:
+          type: number
+          format: double
+          example: 12500.00
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-08-25T10:30:00Z
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - requestId
+        - employeeId
+      properties:
+        requestId:
+          type: string
+          example: REQ-001
+        employeeId:
+          type: string
+          example: EMP-001
+
+    UpdateOrderStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - WAITING_FOR_SERVICE
+            - DIAGNOSTICS
+            - IN_PROGRESS
+            - WAITING_FOR_APPROVAL
+            - READY_FOR_PICKUP
+            - COMPLETED
+            - CANCELLED
+          example: READY_FOR_PICKUP
+
+
+    Diagnostic:
+      type: object
+      required:
+        - diagnosticId
+        - orderId
+        - description
+        - createdAt
+      properties:
+        diagnosticId:
+          type: string
+          example: DIA-001
+        orderId:
+          type: string
+          example: ORD-001
+        description:
+          type: string
+          example: Обнаружен износ тормозных колодок.
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-08-25T12:00:00Z
+
+    CreateDiagnosticRequest:
+      type: object
+      required:
+        - description
+      properties:
+        description:
+          type: string
+          example: Обнаружен износ тормозных колодок.
+
+
+    Work:
+      type: object
+      required:
+        - workId
+        - name
+        - price
+      properties:
+        workId:
+          type: string
+          example: WRK-001
+        name:
+          type: string
+          example: Замена моторного масла
+        price:
+          type: number
+          format: double
+          example: 2500.00
+
+    AddWorkRequest:
+      type: object
+      required:
+        - workId
+        - quantity
+      properties:
+        workId:
+          type: string
+          example: WRK-001
+        quantity:
+          type: integer
+          minimum: 1
+          example: 1
+
+
+    Part:
+      type: object
+      required:
+        - partId
+        - name
+        - article
+        - price
+        - quantity
+      properties:
+        partId:
+          type: string
+          example: PRT-001
+        name:
+          type: string
+          example: Масляный фильтр
+        article:
+          type: string
+          example: OF-123
+        price:
+          type: number
+          format: double
+          example: 1200.00
+        quantity:
+          type: integer
+          example: 15
+
+    PartAvailability:
+      type: object
+      required:
+        - partId
+        - available
+        - quantity
+      properties:
+        partId:
+          type: string
+          example: PRT-001
+        available:
+          type: boolean
+          example: true
+        quantity:
+          type: integer
+          example: 15
